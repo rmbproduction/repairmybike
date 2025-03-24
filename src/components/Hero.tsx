@@ -64,7 +64,7 @@ const Hero = () => {
                 <div className="floating relative w-full h-[500px] rounded-2xl overflow-hidden shadow-2xl transform perspective-1000">
                   <img
                     className="w-full h-full object-cover"
-                    src="src/components/bikeExpert.jpeg"
+                    src="src/components/bikeExpert.jpg"
                     alt="Bike mechanic working"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
