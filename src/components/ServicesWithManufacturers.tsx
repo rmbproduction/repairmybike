@@ -1,6 +1,20 @@
 import { Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { services } from '../data/services';
+import { useState } from 'react';
+
+// Add car brands
+const carBrands = [
+  'All Cars',
+  'Maruti Suzuki',
+  'Honda',
+  'Tata',
+  'Hyundai',
+  'Toyota',
+  'Mahindra',
+  'Kia',
+  'MG',
+];
 
 interface Manufacturer {
   id: string;
@@ -60,9 +74,34 @@ const ManufacturerCard = ({ manufacturer }: { manufacturer: Manufacturer }) => {
 };
 
 const ServicesWithManufacturers = () => {
+  const [selectedCar, setSelectedCar] = useState('All Cars');
+
+  const filteredServices = services.map(service => ({
+    ...service,
+    manufacturers: service.manufacturers?.filter(m => 
+      selectedCar === 'All Cars' || m.name.includes(selectedCar)
+    )
+  }));
+
   return (
     <div className="container mx-auto py-8 px-4">
-      {services.map((service) => (
+      {/* Car Selection Dropdown */}
+      <div className="mb-8">
+        <select
+          value={selectedCar}
+          onChange={(e) => setSelectedCar(e.target.value)}
+          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF5733] focus:border-transparent"
+        >
+          {carBrands.map((brand) => (
+            <option key={brand} value={brand}>
+              {brand}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Services List */}
+      {filteredServices.map((service) => (
         <div key={service.id} className="mb-12">
           <div className="flex items-center gap-4 mb-6">
             {service.iconName && (
