@@ -9,7 +9,8 @@ import ServiceDetails from './pages/ServiceDetails';
 import TestAPI from './components/TestAPI';
 import ManufacturerSelect from './components/ManufacturerSelect';
 import BookingForm from './components/BookingForm';
-import { Manufacturer } from './types/manufacturer';
+// Change this line
+import { Manufacturer } from './data/services';
 
 function App() {
   return (
