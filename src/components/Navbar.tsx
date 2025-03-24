@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Wrench, Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,7 +11,7 @@ const Navbar = () => {
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
             <Wrench className="h-8 w-8 text-[#FF5733]" />
-            <span className="ml-2 text-xl font-bold text-gray-900">RepairMyBike</span>
+            <Link to="/" className="ml-2 text-xl font-bold text-gray-900">RepairMyBike</Link>
           </div>
           
           {/* Desktop Menu */}
