@@ -1,6 +1,7 @@
 import os
 import requests
 import logging
+import hashlib
 from django.shortcuts import redirect
 from django.contrib.auth import authenticate, login
 from rest_framework.views import APIView
@@ -15,7 +16,6 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from django.core.mail import send_mail
@@ -49,24 +49,11 @@ GOOGLE_REDIRECT_URI = "http://localhost:8000/api/accounts/google/callback/"
 request_counts = defaultdict(list)
 
 def check_rate_limit(ip, limit=5, window=60):
-    """
-    Check if the IP has exceeded the rate limit.
-    limit: maximum number of requests
-    window: time window in seconds
-    """
-    now = datetime.now()
-    request_times = request_counts[ip]
-    
-    # Remove old requests
-    request_times = [time for time in request_times if (now - time).total_seconds() < window]
-    request_counts[ip] = request_times
-    
-    # Check if limit is exceeded
-    if len(request_times) >= limit:
+    key = f"rate_limit_{ip}"
+    request_count = cache.get(key, 0)
+    if request_count >= limit:
         return True
-    
-    # Add current request
-    request_times.append(now)
+    cache.set(key, request_count + 1, timeout=window)
     return False
 
 def validate_password_strength(password):
@@ -436,53 +423,6 @@ class SignupView(generics.GenericAPIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class VerifyEmailView(APIView):
-#     permission_classes = (permissions.AllowAny,)
-
-#     def get(self, request, token):
-#         # Get user_id from cache
-#         user_id = cache.get(f'email_verification_{token}')
-#         if not user_id:
-#             return Response({
-#                 "error": "Invalid or expired verification link"
-#             }, status=status.HTTP_400_BAD_REQUEST)
-        
-#         try:
-#             user = User.objects.get(pk=user_id)
-#             if not user.is_active:
-#                 user.is_active = True
-#                 user.email_verified = True
-#                 user.save()
-                
-#                 # Generate JWT tokens
-#                 tokens = get_tokens_for_user(user)
-                
-#                 # Clear verification token
-#                 cache.delete(f'email_verification_{token}')
-                
-#                 # Log successful verification
-#                 logger.info(f"Email verified for user: {user.email}")
-                
-#                 return Response({
-#                     "message": "Email verified successfully",
-#                     "tokens": tokens,
-#                     "user": {
-#                         "id": user.id,
-#                         "username": user.username,
-#                         "email": user.email
-#                     }
-#                 })
-            
-#             return Response({
-#                 "message": "Email already verified"
-#             })
-            
-#         except User.DoesNotExist:
-#             logger.error(f"Verification failed: User not found for token {token}")
-#             return Response({
-#                 "error": "User not found"
-#             }, status=status.HTTP_404_NOT_FOUND)
-
 class VerifyEmailView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -536,9 +476,6 @@ class VerifyEmailView(APIView):
             return Response({
                 "error": "User not found"
             }, status=status.HTTP_404_NOT_FOUND)
-
-
-
 
 class LogoutView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
