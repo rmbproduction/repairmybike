@@ -3,35 +3,109 @@ import { Link } from 'react-router-dom';
 import type { ServiceData } from '../data/services';
 import { getServiceIcon } from '../data/services';
 
+interface ApiServiceData {
+  uuid: string;
+  slug: string;
+  name: string;
+  description?: string;
+  features?: string[];
+  packages?: Array<{
+    id: number;
+    name: string;
+    price: number;
+    duration: string;
+    warranty: string;
+    recommended: string;
+    features: string[];
+  }>;
+}
+
 const Services = () => {
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const fetchServices = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Import services dynamically to avoid potential issues
-        const { services } = await import('../data/services');
-        
-        if (!Array.isArray(services) || services.length === 0) {
-          throw new Error('No services data available');
+
+        const url = import.meta.env.VITE_SERVICE_CATEGORIES_URL;
+        if (!url) {
+          throw new Error('Service categories URL is not configured');
         }
-        
-        setServicesData(services);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch services: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid response format: expected an array');
+        }
+
+        const formattedData: ServiceData[] = data
+          .filter((item): item is ApiServiceData => {
+            return (
+              typeof item === 'object' &&
+              item !== null &&
+              typeof item.uuid === 'string' &&
+              typeof item.slug === 'string' &&
+              typeof item.name === 'string'
+            );
+          })
+          .map((item) => ({
+            id: item.uuid,
+            iconName: item.slug.includes('battery') ? 'battery' : 'tool',
+            title: item.name,
+            description: item.description || 'No description available',
+            features: Array.isArray(item.features) ? item.features : [],
+            packages: Array.isArray(item.packages)
+              ? item.packages.map((pkg) => ({
+                  id: pkg.id,
+                  name: pkg.name,
+                  price: pkg.price,
+                  duration: pkg.duration,
+                  warranty: pkg.warranty,
+                  recommended: pkg.recommended,
+                  features: Array.isArray(pkg.features) ? pkg.features : [],
+                }))
+              : [],
+          }));
+
+        if (formattedData.length === 0) {
+          throw new Error('No valid service data found in response');
+        }
+
+        if (mounted) {
+          setServicesData(formattedData);
+        }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to fetch services');
         console.error('Error fetching services:', error);
+        if (mounted) {
+          setError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load services. Please try again later.'
+          );
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchServices();
-  }, []);
+  }, [mounted]);
 
   if (loading) {
     return (
@@ -43,16 +117,28 @@ const Services = () => {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-red-600">Error: {error}</div>
+      <div className="flex flex-col justify-center items-center min-h-[400px] space-y-4">
+        <div className="text-red-600 text-center">
+          <p className="font-medium">Error loading services</p>
+          <p className="text-sm text-gray-600">{error}</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-[#FF5733] text-white px-4 py-2 rounded-lg hover:bg-[#ff4019] transition-colors"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
 
   if (!servicesData.length) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-gray-600">No services available</div>
+      <div className="flex flex-col justify-center items-center min-h-[400px] space-y-4">
+        <div className="text-gray-600 text-center">
+          <p className="font-medium">No services available</p>
+          <p className="text-sm">Please check back later for our service offerings.</p>
+        </div>
       </div>
     );
   }
@@ -77,7 +163,7 @@ const Services = () => {
                   <h3 className="text-xl font-semibold ml-3">{service.title}</h3>
                 </div>
                 <p className="text-gray-600 mb-4">{service.description}</p>
-                {service.features && (
+                {service.features && service.features.length > 0 && (
                   <ul className="space-y-2">
                     {service.features.slice(0, 3).map((feature, index) => (
                       <li key={index} className="flex items-center text-sm text-gray-600">
@@ -87,10 +173,10 @@ const Services = () => {
                     ))}
                   </ul>
                 )}
-                {service.packages && (
+                {service.packages && service.packages.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-gray-900">
-                      Starting from ₹{Math.min(...service.packages.map(pkg => pkg.price))}
+                      Starting from ₹{Math.min(...service.packages.map((pkg) => pkg.price))}
                     </p>
                   </div>
                 )}
